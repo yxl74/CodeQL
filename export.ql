@@ -35,8 +35,8 @@ class AndroidComponent extends Class {
   }
 }
 
-predicate isExportedInAnyManifest(AndroidComponent component) {
-  exists(AndroidManifestFile manifest, XmlElement elem |
+predicate isExportedInAnyManifest(AndroidComponent component, AndroidManifestFile manifest, string permission) {
+  exists(XmlElement elem |
     elem.getFile() = manifest and
     elem.getName() = component.getComponentType() and
     (
@@ -63,6 +63,11 @@ predicate isExportedInAnyManifest(AndroidComponent component) {
           intentFilter.getName() = "intent-filter"
         )
       )
+    ) and
+    (
+      permission = elem.getAttributeValue("android:permission")
+      or
+      (not exists(elem.getAttributeValue("android:permission")) and permission = "No specific permission required")
     )
   )
 }
@@ -116,9 +121,9 @@ predicate isUsedInPendingIntent(AndroidComponent component) {
   )
 }
 
-from AndroidComponent component, AndroidManifestFile manifest
+from AndroidComponent component, AndroidManifestFile manifest, string permission
 where
-  isExportedInAnyManifest(component)
+  isExportedInAnyManifest(component, manifest, permission)
   or
   isDynamicallyRegisteredOrStarted(component)
   or
@@ -129,11 +134,14 @@ where
   isUsedInPendingIntent(component)
 select 
   component,
-  "This component is potentially exposed to external interactions. Reason: " +
+  "This component is potentially exposed to external interactions. " +
+  "Manifest: " + manifest.getAbsolutePath() + ". " +
+  "Permission: " + permission + ". " +
+  "Reason: " +
   concat(string reason |
     (
-      isExportedInAnyManifest(component) and
-      reason = "Exported in manifest file: " + manifest.getAbsolutePath() + " (explicitly or implicitly due to intent filter). "
+      isExportedInAnyManifest(component, manifest, _) and
+      reason = "Exported in manifest file (explicitly or implicitly due to intent filter). "
     ) or (
       isDynamicallyRegisteredOrStarted(component) and
       reason = "Dynamically registered or started. "
