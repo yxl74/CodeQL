@@ -1,11 +1,12 @@
 import java
 import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.frameworks.android.Android
+import semmle.code.xml.AndroidManifest
 
 predicate isExplicitlyUnexported(AndroidComponent component) {
-  exists(AndroidManifestXmlElement elem |
-    elem = component.getAndroidManifestXmlElement() and
-    elem.getAttribute("android:exported") = "false"
+  exists(AndroidComponentXmlElement elem |
+    elem.getComponent() = component and
+    elem.getAttributeValue("android:exported") = "false"
   )
 }
 
@@ -22,32 +23,42 @@ predicate isDynamicallyRegisteredOrStarted(AndroidComponent component) {
       "startActivityForResult"
     ]) and
     (
-      ma.getAnArgument().getType() = component.getClass()
+      ma.getAnArgument().getType() = component.getType()
       or
-      ma.getAnArgument().(VarAccess).getVariable().getType() = component.getClass()
+      ma.getAnArgument().(VarAccess).getVariable().getType() = component.getType()
     )
   )
 }
 
 predicate isIntentTarget(AndroidComponent component) {
   exists(ClassInstanceExpr newIntent |
-    newIntent.getType() instanceof TypeIntent and
-    newIntent.getAnArgument().getType() = component.getClass()
+    newIntent.getConstructedType() instanceof TypeIntent and
+    newIntent.getAnArgument().getType() = component.getType()
   )
 }
 
 predicate isUsedInPendingIntent(AndroidComponent component) {
   exists(MethodAccess ma |
     ma.getMethod().getDeclaringType() instanceof TypePendingIntent and
-    ma.getAnArgument().getType() = component.getClass()
+    ma.getAnArgument().getType() = component.getType()
+  )
+}
+
+predicate isExported(AndroidComponent component) {
+  exists(AndroidComponentXmlElement elem |
+    elem.getComponent() = component and
+    (
+      elem.getAttributeValue("android:exported") = "true"
+      or
+      not exists(elem.getAttributeValue("android:exported")) and
+      exists(IntentFilterXmlElement filter | filter.getParent() = elem)
+    )
   )
 }
 
 from AndroidComponent component
 where
-  component.isExported()
-  or
-  (component.hasIntentFilter() and not isExplicitlyUnexported(component))
+  isExported(component)
   or
   isDynamicallyRegisteredOrStarted(component)
   or
@@ -59,11 +70,8 @@ where
 select component, 
   "This component is potentially exposed to external interactions. " +
   "Reason: " + 
-  (if component.isExported()
-    then "Explicitly exported in the manifest. "
-   else "") +
-  (if component.hasIntentFilter() and not isExplicitlyUnexported(component)
-    then "Has an intent filter and not explicitly unexported. "
+  (if isExported(component)
+    then "Explicitly exported in the manifest or has an intent filter without android:exported=\"false\". "
    else "") +
   (if isDynamicallyRegisteredOrStarted(component)
     then "Potentially dynamically registered or started. "
