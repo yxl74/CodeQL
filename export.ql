@@ -12,7 +12,6 @@ class AndroidComponent extends Class {
       "ContentProvider"
     ])
     or
-    // Include classes that implement Binder, which are often used as custom services
     this.getAnAncestor().hasQualifiedName("android.os", "Binder")
   }
 
@@ -34,22 +33,24 @@ class AndroidComponent extends Class {
   }
 }
 
-predicate isDeclaredInManifest(AndroidComponent component) {
-  exists(component.getComponentXmlElement())
-}
-
-predicate isExplicitlyExported(AndroidComponent component) {
+predicate isExportedInManifest(AndroidComponent component) {
   exists(AndroidComponentXmlElement elem |
     elem = component.getComponentXmlElement() and
-    elem.getAttributeValue("android:exported") = "true"
-  )
-}
-
-predicate hasIntentFilter(AndroidComponent component) {
-  exists(AndroidComponentXmlElement elem, XmlElement intentFilter |
-    elem = component.getComponentXmlElement() and
-    intentFilter.getParent() = elem and
-    intentFilter.getName() = "intent-filter"
+    (
+      elem.getAttributeValue("android:exported") = "true"
+      or
+      (
+        not exists(elem.getAttributeValue("android:exported")) and
+        (
+          component instanceof AndroidContentProvider // Content providers are exported by default in Android < 4.2
+          or
+          exists(XmlElement intentFilter |
+            intentFilter.getParent() = elem and
+            intentFilter.getName() = "intent-filter"
+          )
+        )
+      )
+    )
   )
 }
 
@@ -104,17 +105,11 @@ predicate isUsedInPendingIntent(AndroidComponent component) {
 
 from AndroidComponent component
 where
-  isDeclaredInManifest(component)
-  or
-  isExplicitlyExported(component)
-  or
-  hasIntentFilter(component)
+  isExportedInManifest(component)
   or
   isDynamicallyRegisteredOrStarted(component)
   or
   isRegisteredWithServiceManager(component)
-  or
-  component.getASupertype*().hasQualifiedName("android.content", "ContentProvider")
   or
   isIntentTarget(component)
   or
@@ -124,23 +119,14 @@ select
   "This component is potentially exposed to external interactions. Reason: " +
   concat(string reason |
     (
-      isDeclaredInManifest(component) and
-      reason = "Declared in the manifest. "
-    ) or (
-      isExplicitlyExported(component) and
-      reason = "Explicitly exported in the manifest. "
-    ) or (
-      hasIntentFilter(component) and
-      reason = "Has an intent filter in the manifest. "
+      isExportedInManifest(component) and
+      reason = "Exported in the manifest (explicitly or implicitly due to intent filter or being a ContentProvider). "
     ) or (
       isDynamicallyRegisteredOrStarted(component) and
       reason = "Dynamically registered or started. "
     ) or (
       isRegisteredWithServiceManager(component) and
       reason = "Registered with ServiceManager.addService. "
-    ) or (
-      component.getASupertype*().hasQualifiedName("android.content", "ContentProvider") and
-      reason = "Is a ContentProvider (potentially exposed by default in Android < 4.2). "
     ) or (
       isIntentTarget(component) and
       reason = "Used as an Intent target. "
