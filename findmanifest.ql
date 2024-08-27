@@ -1,23 +1,13 @@
 import java
 import codeql.xml.Xml
 
-from File manifest, XmlElement component, string componentType, string componentName
+from File manifest, XmlElement component, string componentName
 where
   manifest.getBaseName() = "AndroidManifest.xml" and
   component.getFile() = manifest and
-  componentType = component.getName() and
-  componentType in ["activity", "service", "receiver", "provider", "application"] and
-  (
-    componentName = component.getAttributeValue("android:name")
-    or
-    componentName = component.getAttributeValue("name")
-    or
-    not exists(component.getAttributeValue("android:name")) and
-    not exists(component.getAttributeValue("name")) and
-    componentName = "No name attribute"
-  )
+  component.getName() in ["activity", "service", "receiver", "provider"] and
+  componentName = component.getAttributeValue("android:name")
 select
-  manifest.getAbsolutePath(),
-  componentType,
-  componentName,
-  "Potential component found in AndroidManifest.xml"
+  manifest.getAbsolutePath() as ManifestPath,
+  component.getName() as ComponentType,
+  componentName as ComponentName
