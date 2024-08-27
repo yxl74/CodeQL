@@ -1,7 +1,7 @@
 import java
-import codeql.xml.Xml
+import xml.XML
 
-from File manifest, XmlElement component, string componentType, string componentName
+from XMLFile manifest, XMLElement component, string componentType, string componentName
 where
   manifest.getBaseName() = "AndroidManifest.xml" and
   component.getFile() = manifest and
