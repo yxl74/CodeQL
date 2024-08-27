@@ -2,9 +2,9 @@ import java
 import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.frameworks.android.Android
 import semmle.code.xml.AndroidManifest
-import xml.XML
+import codeql.xml.Xml
 
-class AndroidManifestFile extends XMLFile {
+class AndroidManifestFile extends XmlFile {
   AndroidManifestFile() {
     this.getBaseName() = "AndroidManifest.xml"
   }
@@ -36,7 +36,7 @@ class AndroidComponent extends Class {
 }
 
 predicate isExportedInAnyManifest(AndroidComponent component) {
-  exists(AndroidManifestFile manifest, XMLElement elem |
+  exists(AndroidManifestFile manifest, XmlElement elem |
     elem.getFile() = manifest and
     elem.getName() = component.getComponentType() and
     (
@@ -49,7 +49,7 @@ predicate isExportedInAnyManifest(AndroidComponent component) {
       or
       (
         not elem.getAttributeValue("android:exported") = "false" and
-        exists(XMLElement intentFilter |
+        exists(XmlElement intentFilter |
           intentFilter.getParent() = elem and
           intentFilter.getName() = "intent-filter"
         )
