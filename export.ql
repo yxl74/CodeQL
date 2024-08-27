@@ -29,13 +29,6 @@ class AndroidComponent extends Class {
   }
 }
 
-predicate isExplicitlyUnexported(AndroidComponent component) {
-  exists(AndroidComponentXmlElement elem |
-    elem = component.getComponentXmlElement() and
-    elem.getAttributeValue("android:exported") = "false"
-  )
-}
-
 predicate isDynamicallyRegisteredOrStarted(AndroidComponent component) {
   exists(MethodCall mc |
     mc.getMethod().hasName([
@@ -76,10 +69,12 @@ predicate isExported(AndroidComponent component) {
     (
       elem.getAttributeValue("android:exported") = "true"
       or
-      not exists(elem.getAttributeValue("android:exported")) and
-      exists(XmlElement intentFilter |
-        intentFilter.getParent() = elem and
-        intentFilter.getName() = "intent-filter"
+      (
+        not elem.getAttributeValue("android:exported") = "false" and
+        exists(XmlElement intentFilter |
+          intentFilter.getParent() = elem and
+          intentFilter.getName() = "intent-filter"
+        )
       )
     )
   )
