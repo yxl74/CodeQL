@@ -35,7 +35,7 @@ class AndroidComponent extends Class {
   }
 }
 
-predicate isExportedInAnyManifest(AndroidComponent component, AndroidManifestFile manifest, string permission) {
+predicate isExportedInManifest(AndroidComponent component, AndroidManifestFile manifest, string permission) {
   exists(XmlElement elem |
     elem.getFile() = manifest and
     elem.getName() = component.getComponentType() and
@@ -124,9 +124,11 @@ predicate isUsedInPendingIntent(AndroidComponent component) {
 from AndroidComponent component, string exposureReason, string manifestPath, string permission
 where
   (
-    isExportedInAnyManifest(component, manifest, permission) and
-    exposureReason = "Exported in manifest file (explicitly or implicitly due to intent filter)" and
-    manifestPath = manifest.getAbsolutePath()
+    exists(AndroidManifestFile manifest |
+      isExportedInManifest(component, manifest, permission) and
+      exposureReason = "Exported in manifest file (explicitly or implicitly due to intent filter)" and
+      manifestPath = manifest.getAbsolutePath()
+    )
   )
   or
   (
