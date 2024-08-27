@@ -15,9 +15,13 @@ class AndroidComponent extends Class {
     this.getAnAncestor().hasQualifiedName("android.os", "Binder")
   }
 
-  AndroidComponentXmlElement getComponentXmlElement() {
+  AndroidComponentXmlElement getAComponentXmlElement() {
     result.getName() = this.getComponentType() and
-    result.getAttributeValue("android:name") = this.getName()
+    (
+      result.getAttributeValue("android:name") = this.getName()
+      or
+      result.getAttributeValue("android:name") = this.getName().suffix(this.getPackage().getName().length() + 1)
+    )
   }
 
   string getComponentType() {
@@ -33,21 +37,17 @@ class AndroidComponent extends Class {
   }
 }
 
-predicate isExportedInManifest(AndroidComponent component) {
+predicate isExportedInAnyManifest(AndroidComponent component) {
   exists(AndroidComponentXmlElement elem |
-    elem = component.getComponentXmlElement() and
+    elem = component.getAComponentXmlElement() and
     (
       elem.getAttributeValue("android:exported") = "true"
       or
       (
-        not exists(elem.getAttributeValue("android:exported")) and
-        (
-          component instanceof AndroidContentProvider // Content providers are exported by default in Android < 4.2
-          or
-          exists(XmlElement intentFilter |
-            intentFilter.getParent() = elem and
-            intentFilter.getName() = "intent-filter"
-          )
+        not elem.getAttributeValue("android:exported") = "false" and
+        exists(XmlElement intentFilter |
+          intentFilter.getParent() = elem and
+          intentFilter.getName() = "intent-filter"
         )
       )
     )
@@ -105,7 +105,7 @@ predicate isUsedInPendingIntent(AndroidComponent component) {
 
 from AndroidComponent component
 where
-  isExportedInManifest(component)
+  isExportedInAnyManifest(component)
   or
   isDynamicallyRegisteredOrStarted(component)
   or
@@ -119,8 +119,8 @@ select
   "This component is potentially exposed to external interactions. Reason: " +
   concat(string reason |
     (
-      isExportedInManifest(component) and
-      reason = "Exported in the manifest (explicitly or implicitly due to intent filter or being a ContentProvider). "
+      isExportedInAnyManifest(component) and
+      reason = "Exported in a manifest file (explicitly or implicitly due to intent filter). "
     ) or (
       isDynamicallyRegisteredOrStarted(component) and
       reason = "Dynamically registered or started. "
