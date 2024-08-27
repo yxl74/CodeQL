@@ -96,22 +96,27 @@ where
   isIntentTarget(component)
   or
   isUsedInPendingIntent(component)
-select component, 
-  "This component is potentially exposed to external interactions. " +
-  "Reason: " + 
-  (if isExported(component)
-    then "Explicitly exported in the manifest or has an intent filter without android:exported=\"false\". "
-   else "") +
-  (if isDynamicallyRegisteredOrStarted(component)
-    then "Potentially dynamically registered or started. "
-   else "") +
-  (if component.getASupertype*().hasQualifiedName("android.content", "ContentProvider")
-    then "Is a ContentProvider (potentially exposed by default in Android < 4.2). "
-   else "") +
-  (if isIntentTarget(component)
-    then "Used as an Intent target. "
-   else "") +
-  (if isUsedInPendingIntent(component)
-    then "Used in a PendingIntent. "
-   else "") +
+select 
+  component,
+  "This component is potentially exposed to external interactions. Reason: " +
+  concat(string reason |
+    (
+      isExported(component) and
+      reason = "Explicitly exported in the manifest or has an intent filter without android:exported=\"false\". "
+    ) or (
+      isDynamicallyRegisteredOrStarted(component) and
+      reason = "Potentially dynamically registered or started. "
+    ) or (
+      component.getASupertype*().hasQualifiedName("android.content", "ContentProvider") and
+      reason = "Is a ContentProvider (potentially exposed by default in Android < 4.2). "
+    ) or (
+      isIntentTarget(component) and
+      reason = "Used as an Intent target. "
+    ) or (
+      isUsedInPendingIntent(component) and
+      reason = "Used in a PendingIntent. "
+    )
+    |
+    reason
+  ) +
   "Verify if this exposure is intentional and properly secured."
