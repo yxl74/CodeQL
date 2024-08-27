@@ -29,12 +29,29 @@ class AndroidComponent extends Class {
   }
 }
 
+predicate isDeclaredInManifest(AndroidComponent component) {
+  exists(component.getComponentXmlElement())
+}
+
+predicate isExplicitlyExported(AndroidComponent component) {
+  exists(AndroidComponentXmlElement elem |
+    elem = component.getComponentXmlElement() and
+    elem.getAttributeValue("android:exported") = "true"
+  )
+}
+
+predicate hasIntentFilter(AndroidComponent component) {
+  exists(AndroidComponentXmlElement elem, XmlElement intentFilter |
+    elem = component.getComponentXmlElement() and
+    intentFilter.getParent() = elem and
+    intentFilter.getName() = "intent-filter"
+  )
+}
+
 predicate isDynamicallyRegisteredOrStarted(AndroidComponent component) {
   exists(MethodCall mc |
     mc.getMethod().hasName([
       "registerReceiver", 
-      "registerActivity", 
-      "registerService", 
       "registerContentProvider",
       "startService",
       "bindService",
@@ -47,17 +64,18 @@ predicate isDynamicallyRegisteredOrStarted(AndroidComponent component) {
       mc.getAnArgument().(VarAccess).getVariable().getType() = component
     )
   )
-}
-
-predicate isDynamicallyRegisteredAndExported(AndroidComponent component) {
-  exists(MethodCall mc, Expr flagArg |
-    mc.getMethod().hasName(["registerReceiver", "registerContentProvider"]) and
-    mc.getAnArgument().getType() = component and
-    flagArg = mc.getArgument(mc.getNumArgument() - 1) and  // Assuming the last argument is the flags
+  or
+  exists(MethodCall mc |
     (
-      flagArg.(IntegerLiteral).getValue().bitAnd(1) != 0  // RECEIVER_EXPORTED = 1 << 0
+      mc.getMethod().hasName("registerService")
       or
-      flagArg.(BinaryExpr).getAnOperand().(IntegerLiteral).getValue().bitAnd(1) != 0
+      mc.getMethod().hasName("addService") and
+      mc.getMethod().getDeclaringType().hasQualifiedName("android.os", "ServiceManager")
+    ) and
+    (
+      mc.getAnArgument().getType() = component
+      or
+      mc.getAnArgument().(VarAccess).getVariable().getType() = component
     )
   )
 }
@@ -76,28 +94,13 @@ predicate isUsedInPendingIntent(AndroidComponent component) {
   )
 }
 
-predicate isExported(AndroidComponent component) {
-  exists(AndroidComponentXmlElement elem |
-    elem = component.getComponentXmlElement() and
-    (
-      elem.getAttributeValue("android:exported") = "true"
-      or
-      (
-        not elem.getAttributeValue("android:exported") = "false" and
-        exists(XmlElement intentFilter |
-          intentFilter.getParent() = elem and
-          intentFilter.getName() = "intent-filter"
-        )
-      )
-    )
-  )
-  or
-  isDynamicallyRegisteredAndExported(component)
-}
-
 from AndroidComponent component
 where
-  isExported(component)
+  isDeclaredInManifest(component)
+  or
+  isExplicitlyExported(component)
+  or
+  hasIntentFilter(component)
   or
   isDynamicallyRegisteredOrStarted(component)
   or
@@ -111,11 +114,17 @@ select
   "This component is potentially exposed to external interactions. Reason: " +
   concat(string reason |
     (
-      isExported(component) and
-      reason = "Explicitly exported in the manifest, has an intent filter without android:exported=\"false\", or dynamically registered as exported. "
+      isDeclaredInManifest(component) and
+      reason = "Declared in the manifest. "
     ) or (
-      isDynamicallyRegisteredOrStarted(component) and not isDynamicallyRegisteredAndExported(component) and
-      reason = "Potentially dynamically registered or started (but not explicitly as exported). "
+      isExplicitlyExported(component) and
+      reason = "Explicitly exported in the manifest. "
+    ) or (
+      hasIntentFilter(component) and
+      reason = "Has an intent filter in the manifest. "
+    ) or (
+      isDynamicallyRegisteredOrStarted(component) and
+      reason = "Dynamically registered or started. "
     ) or (
       component.getASupertype*().hasQualifiedName("android.content", "ContentProvider") and
       reason = "Is a ContentProvider (potentially exposed by default in Android < 4.2). "
