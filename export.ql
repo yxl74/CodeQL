@@ -121,41 +121,45 @@ predicate isUsedInPendingIntent(AndroidComponent component) {
   )
 }
 
-from AndroidComponent component, AndroidManifestFile manifest, string permission
+from AndroidComponent component, string exposureReason, string manifestPath, string permission
 where
-  isExportedInAnyManifest(component, manifest, permission)
+  (
+    isExportedInAnyManifest(component, manifest, permission) and
+    exposureReason = "Exported in manifest file (explicitly or implicitly due to intent filter)" and
+    manifestPath = manifest.getAbsolutePath()
+  )
   or
-  isDynamicallyRegisteredOrStarted(component)
+  (
+    isDynamicallyRegisteredOrStarted(component) and
+    exposureReason = "Dynamically registered or started" and
+    manifestPath = "N/A" and
+    permission = "Unknown"
+  )
   or
-  isRegisteredWithServiceManager(component)
+  (
+    isRegisteredWithServiceManager(component) and
+    exposureReason = "Registered with ServiceManager.addService" and
+    manifestPath = "N/A" and
+    permission = "Unknown"
+  )
   or
-  isIntentTarget(component)
+  (
+    isIntentTarget(component) and
+    exposureReason = "Used as an Intent target" and
+    manifestPath = "N/A" and
+    permission = "Unknown"
+  )
   or
-  isUsedInPendingIntent(component)
+  (
+    isUsedInPendingIntent(component) and
+    exposureReason = "Used in a PendingIntent" and
+    manifestPath = "N/A" and
+    permission = "Unknown"
+  )
 select 
   component,
   "This component is potentially exposed to external interactions. " +
-  "Manifest: " + manifest.getAbsolutePath() + ". " +
+  "Manifest: " + manifestPath + ". " +
   "Permission: " + permission + ". " +
-  "Reason: " +
-  concat(string reason |
-    (
-      isExportedInAnyManifest(component, manifest, _) and
-      reason = "Exported in manifest file (explicitly or implicitly due to intent filter). "
-    ) or (
-      isDynamicallyRegisteredOrStarted(component) and
-      reason = "Dynamically registered or started. "
-    ) or (
-      isRegisteredWithServiceManager(component) and
-      reason = "Registered with ServiceManager.addService. "
-    ) or (
-      isIntentTarget(component) and
-      reason = "Used as an Intent target. "
-    ) or (
-      isUsedInPendingIntent(component) and
-      reason = "Used in a PendingIntent. "
-    )
-    |
-    reason
-  ) +
+  "Reason: " + exposureReason + ". " +
   "Verify if this exposure is intentional and properly secured."
