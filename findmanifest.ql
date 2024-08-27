@@ -9,7 +9,7 @@ class AndroidManifestFile extends File {
 
 from AndroidManifestFile manifest, XmlElement component, string componentNameAttr
 where
-  component.getFile() = manifest and
+  manifest.getAbsolutePath() = component.getFile().getAbsolutePath() and
   component.getName() in ["activity", "service", "receiver", "provider"] and
   componentNameAttr = component.getAttributeValue("android:name")
 select
