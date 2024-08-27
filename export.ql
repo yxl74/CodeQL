@@ -49,6 +49,19 @@ predicate isDynamicallyRegisteredOrStarted(AndroidComponent component) {
   )
 }
 
+predicate isDynamicallyRegisteredAndExported(AndroidComponent component) {
+  exists(MethodCall mc, Expr flagArg |
+    mc.getMethod().hasName(["registerReceiver", "registerContentProvider"]) and
+    mc.getAnArgument().getType() = component and
+    flagArg = mc.getArgument(mc.getNumArgument() - 1) and  // Assuming the last argument is the flags
+    (
+      flagArg.(IntegerLiteral).getValue().bitAnd(1) != 0  // RECEIVER_EXPORTED = 1 << 0
+      or
+      flagArg.(BinaryExpr).getAnOperand().(IntegerLiteral).getValue().bitAnd(1) != 0
+    )
+  )
+}
+
 predicate isIntentTarget(AndroidComponent component) {
   exists(ClassInstanceExpr newIntent |
     newIntent.getConstructedType().hasQualifiedName("android.content", "Intent") and
@@ -78,6 +91,8 @@ predicate isExported(AndroidComponent component) {
       )
     )
   )
+  or
+  isDynamicallyRegisteredAndExported(component)
 }
 
 from AndroidComponent component
@@ -97,10 +112,10 @@ select
   concat(string reason |
     (
       isExported(component) and
-      reason = "Explicitly exported in the manifest or has an intent filter without android:exported=\"false\". "
+      reason = "Explicitly exported in the manifest, has an intent filter without android:exported=\"false\", or dynamically registered as exported. "
     ) or (
-      isDynamicallyRegisteredOrStarted(component) and
-      reason = "Potentially dynamically registered or started. "
+      isDynamicallyRegisteredOrStarted(component) and not isDynamicallyRegisteredAndExported(component) and
+      reason = "Potentially dynamically registered or started (but not explicitly as exported). "
     ) or (
       component.getASupertype*().hasQualifiedName("android.content", "ContentProvider") and
       reason = "Is a ContentProvider (potentially exposed by default in Android < 4.2). "
