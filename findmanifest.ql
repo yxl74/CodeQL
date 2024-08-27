@@ -1,13 +1,19 @@
 import java
 import codeql.xml.Xml
 
-from File manifest, XmlElement component, string componentName
+class AndroidManifestFile extends File {
+  AndroidManifestFile() {
+    this.getAbsolutePath().matches("%/AndroidManifest.xml")
+  }
+}
+
+from AndroidManifestFile manifest, XmlElement component, string componentNameAttr
 where
-  manifest.getBaseName() = "AndroidManifest.xml" and
   component.getFile() = manifest and
   component.getName() in ["activity", "service", "receiver", "provider"] and
-  componentName = component.getAttributeValue("android:name")
+  componentNameAttr = component.getAttributeValue("android:name")
 select
-  manifest.getAbsolutePath() as ManifestPath,
-  component.getName() as ComponentType,
-  componentName as ComponentName
+  manifest.getAbsolutePath() as manifestPath,
+  component.getName() as componentType,
+  componentNameAttr as componentName,
+  "Component found in AndroidManifest.xml" as description
