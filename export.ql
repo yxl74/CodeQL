@@ -37,8 +37,8 @@ predicate isExplicitlyUnexported(AndroidComponent component) {
 }
 
 predicate isDynamicallyRegisteredOrStarted(AndroidComponent component) {
-  exists(MethodAccess ma |
-    ma.getMethod().hasName([
+  exists(MethodCall mc |
+    mc.getMethod().hasName([
       "registerReceiver", 
       "registerActivity", 
       "registerService", 
@@ -49,9 +49,9 @@ predicate isDynamicallyRegisteredOrStarted(AndroidComponent component) {
       "startActivityForResult"
     ]) and
     (
-      ma.getAnArgument().getType() = component
+      mc.getAnArgument().getType() = component
       or
-      ma.getAnArgument().(VarAccess).getVariable().getType() = component
+      mc.getAnArgument().(VarAccess).getVariable().getType() = component
     )
   )
 }
@@ -64,9 +64,9 @@ predicate isIntentTarget(AndroidComponent component) {
 }
 
 predicate isUsedInPendingIntent(AndroidComponent component) {
-  exists(MethodAccess ma |
-    ma.getMethod().getDeclaringType().hasQualifiedName("android.app", "PendingIntent") and
-    ma.getAnArgument().getType() = component
+  exists(MethodCall mc |
+    mc.getMethod().getDeclaringType().hasQualifiedName("android.app", "PendingIntent") and
+    mc.getAnArgument().getType() = component
   )
 }
 
