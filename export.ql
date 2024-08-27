@@ -3,6 +3,17 @@ import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.frameworks.android.Android
 import semmle.code.xml.AndroidManifest
 
+class AndroidComponent extends Class {
+  AndroidComponent() {
+    this.getASupertype*().hasQualifiedName("android.app", [
+      "Activity",
+      "Service",
+      "BroadcastReceiver",
+      "ContentProvider"
+    ])
+  }
+}
+
 predicate isExplicitlyUnexported(AndroidComponent component) {
   exists(AndroidComponentXmlElement elem |
     elem.getComponent() = component and
@@ -23,24 +34,24 @@ predicate isDynamicallyRegisteredOrStarted(AndroidComponent component) {
       "startActivityForResult"
     ]) and
     (
-      ma.getAnArgument().getType() = component.getType()
+      ma.getAnArgument().getType() = component
       or
-      ma.getAnArgument().(VarAccess).getVariable().getType() = component.getType()
+      ma.getAnArgument().(VarAccess).getVariable().getType() = component
     )
   )
 }
 
 predicate isIntentTarget(AndroidComponent component) {
   exists(ClassInstanceExpr newIntent |
-    newIntent.getConstructedType() instanceof TypeIntent and
-    newIntent.getAnArgument().getType() = component.getType()
+    newIntent.getConstructedType().hasQualifiedName("android.content", "Intent") and
+    newIntent.getAnArgument().getType() = component
   )
 }
 
 predicate isUsedInPendingIntent(AndroidComponent component) {
   exists(MethodAccess ma |
-    ma.getMethod().getDeclaringType() instanceof TypePendingIntent and
-    ma.getAnArgument().getType() = component.getType()
+    ma.getMethod().getDeclaringType().hasQualifiedName("android.app", "PendingIntent") and
+    ma.getAnArgument().getType() = component
   )
 }
 
@@ -62,7 +73,7 @@ where
   or
   isDynamicallyRegisteredOrStarted(component)
   or
-  component instanceof AndroidContentProvider
+  component.getASupertype*().hasQualifiedName("android.content", "ContentProvider")
   or
   isIntentTarget(component)
   or
@@ -76,7 +87,7 @@ select component,
   (if isDynamicallyRegisteredOrStarted(component)
     then "Potentially dynamically registered or started. "
    else "") +
-  (if component instanceof AndroidContentProvider
+  (if component.getASupertype*().hasQualifiedName("android.content", "ContentProvider")
     then "Is a ContentProvider (potentially exposed by default in Android < 4.2). "
    else "") +
   (if isIntentTarget(component)
