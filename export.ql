@@ -11,6 +11,9 @@ class AndroidComponent extends Class {
       "BroadcastReceiver",
       "ContentProvider"
     ])
+    or
+    // Include classes that implement Binder, which are often used as custom services
+    this.getAnAncestor().hasQualifiedName("android.os", "Binder")
   }
 
   AndroidComponentXmlElement getComponentXmlElement() {
@@ -26,6 +29,8 @@ class AndroidComponent extends Class {
     this.getASupertype*().hasQualifiedName("android.content", "BroadcastReceiver") and result = "receiver"
     or
     this.getASupertype*().hasQualifiedName("android.content", "ContentProvider") and result = "provider"
+    or
+    this.getAnAncestor().hasQualifiedName("android.os", "Binder") and result = "binder"
   }
 }
 
@@ -64,18 +69,21 @@ predicate isDynamicallyRegisteredOrStarted(AndroidComponent component) {
       mc.getAnArgument().(VarAccess).getVariable().getType() = component
     )
   )
-  or
+}
+
+predicate isRegisteredWithServiceManager(AndroidComponent component) {
   exists(MethodCall mc |
+    mc.getMethod().hasName("addService") and
+    mc.getMethod().getDeclaringType().hasQualifiedName("android.os", "ServiceManager") and
     (
-      mc.getMethod().hasName("registerService")
+      mc.getArgument(1).getType() = component
       or
-      mc.getMethod().hasName("addService") and
-      mc.getMethod().getDeclaringType().hasQualifiedName("android.os", "ServiceManager")
-    ) and
-    (
-      mc.getAnArgument().getType() = component
+      mc.getArgument(1).(VarAccess).getVariable().getType() = component
       or
-      mc.getAnArgument().(VarAccess).getVariable().getType() = component
+      exists(CastExpr ce |
+        ce = mc.getArgument(1) and
+        ce.getExpr().getType() = component
+      )
     )
   )
 }
@@ -104,6 +112,8 @@ where
   or
   isDynamicallyRegisteredOrStarted(component)
   or
+  isRegisteredWithServiceManager(component)
+  or
   component.getASupertype*().hasQualifiedName("android.content", "ContentProvider")
   or
   isIntentTarget(component)
@@ -125,6 +135,9 @@ select
     ) or (
       isDynamicallyRegisteredOrStarted(component) and
       reason = "Dynamically registered or started. "
+    ) or (
+      isRegisteredWithServiceManager(component) and
+      reason = "Registered with ServiceManager.addService. "
     ) or (
       component.getASupertype*().hasQualifiedName("android.content", "ContentProvider") and
       reason = "Is a ContentProvider (potentially exposed by default in Android < 4.2). "
