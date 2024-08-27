@@ -12,11 +12,26 @@ class AndroidComponent extends Class {
       "ContentProvider"
     ])
   }
+
+  AndroidComponentXmlElement getComponentXmlElement() {
+    result.getName() = this.getComponentType() and
+    result.getAttributeValue("android:name") = this.getName()
+  }
+
+  string getComponentType() {
+    this.getASupertype*().hasQualifiedName("android.app", "Activity") and result = "activity"
+    or
+    this.getASupertype*().hasQualifiedName("android.app", "Service") and result = "service"
+    or
+    this.getASupertype*().hasQualifiedName("android.content", "BroadcastReceiver") and result = "receiver"
+    or
+    this.getASupertype*().hasQualifiedName("android.content", "ContentProvider") and result = "provider"
+  }
 }
 
 predicate isExplicitlyUnexported(AndroidComponent component) {
   exists(AndroidComponentXmlElement elem |
-    elem.getComponent() = component and
+    elem = component.getComponentXmlElement() and
     elem.getAttributeValue("android:exported") = "false"
   )
 }
@@ -57,12 +72,15 @@ predicate isUsedInPendingIntent(AndroidComponent component) {
 
 predicate isExported(AndroidComponent component) {
   exists(AndroidComponentXmlElement elem |
-    elem.getComponent() = component and
+    elem = component.getComponentXmlElement() and
     (
       elem.getAttributeValue("android:exported") = "true"
       or
       not exists(elem.getAttributeValue("android:exported")) and
-      exists(IntentFilterXmlElement filter | filter.getParent() = elem)
+      exists(XmlElement intentFilter |
+        intentFilter.getParent() = elem and
+        intentFilter.getName() = "intent-filter"
+      )
     )
   )
 }
