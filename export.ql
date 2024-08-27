@@ -1,14 +1,7 @@
 import java
 import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.frameworks.android.Android
-import semmle.code.xml.AndroidManifest
 import codeql.xml.Xml
-
-class AndroidManifestFile extends XmlFile {
-  AndroidManifestFile() {
-    this.getAbsolutePath().matches("%/AndroidManifest.xml")
-  }
-}
 
 class AndroidComponent extends Class {
   AndroidComponent() {
@@ -35,8 +28,9 @@ class AndroidComponent extends Class {
   }
 }
 
-predicate isExportedInManifest(AndroidComponent component, AndroidManifestFile manifest, string permission) {
+predicate isExportedInManifest(AndroidComponent component, File manifest, string permission) {
   exists(XmlElement elem |
+    manifest.getBaseName() = "AndroidManifest.xml" and
     elem.getFile() = manifest and
     elem.getName() = component.getComponentType() and
     (
@@ -124,7 +118,7 @@ predicate isUsedInPendingIntent(AndroidComponent component) {
 from AndroidComponent component, string exposureReason, string manifestPath, string permission
 where
   (
-    exists(AndroidManifestFile manifest |
+    exists(File manifest |
       isExportedInManifest(component, manifest, permission) and
       exposureReason = "Exported in manifest file (explicitly or implicitly due to intent filter)" and
       manifestPath = manifest.getAbsolutePath()
