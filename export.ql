@@ -6,7 +6,7 @@ import codeql.xml.Xml
 
 class AndroidManifestFile extends XmlFile {
   AndroidManifestFile() {
-    this.getBaseName() = "AndroidManifest.xml"
+    this.getAbsolutePath().matches("%/AndroidManifest.xml")
   }
 }
 
@@ -43,6 +43,15 @@ predicate isExportedInAnyManifest(AndroidComponent component) {
       elem.getAttributeValue("android:name") = component.getName()
       or
       elem.getAttributeValue("android:name") = component.getName().suffix(component.getPackage().getName().length() + 1)
+      or
+      exists(string name |
+        name = elem.getAttributeValue("android:name") and
+        (
+          component.getName().matches("%" + name)
+          or
+          component.getName().suffix(component.getPackage().getName().length() + 1) = name
+        )
+      )
     ) and
     (
       elem.getAttributeValue("android:exported") = "true"
@@ -107,7 +116,7 @@ predicate isUsedInPendingIntent(AndroidComponent component) {
   )
 }
 
-from AndroidComponent component
+from AndroidComponent component, AndroidManifestFile manifest
 where
   isExportedInAnyManifest(component)
   or
@@ -124,7 +133,7 @@ select
   concat(string reason |
     (
       isExportedInAnyManifest(component) and
-      reason = "Exported in a manifest file (explicitly or implicitly due to intent filter). "
+      reason = "Exported in manifest file: " + manifest.getAbsolutePath() + " (explicitly or implicitly due to intent filter). "
     ) or (
       isDynamicallyRegisteredOrStarted(component) and
       reason = "Dynamically registered or started. "
