@@ -1,19 +1,14 @@
-import android
+import java
 import semmle.code.java.dataflow.FlowSources
+import semmle.code.java.frameworks.android.Android
 
 class PotentiallyExposedComponent extends AndroidComponent {
   PotentiallyExposedComponent() {
-    // All components are considered potentially exposed unless explicitly unexported
-    not exists(AndroidManifest manifest, XMLElement elem |
-      manifest.getApplication().getAChild*() = elem and
-      elem.getName() = this.getKind() and
-      elem.getAttribute("android:exported") = "false"
-    )
+    // Components explicitly marked as exported in the manifest
+    isExported()
     or
-    // Any component with an intent filter
-    exists(IntentFilter filter |
-      filter.getComponent() = this
-    )
+    // Components with intent filters (implicitly exported unless android:exported="false")
+    hasIntentFilter() and not isExplicitlyUnexported()
     or
     // Any dynamically registered component
     exists(MethodAccess ma |
@@ -28,25 +23,32 @@ class PotentiallyExposedComponent extends AndroidComponent {
         "startActivityForResult"
       ]) and
       (
-        ma.getAnArgument().getType() = this.getType()
+        ma.getAnArgument().getType() = this.getClass()
         or
-        ma.getAnArgument().(VarAccess).getVariable().getType() = this.getType()
+        ma.getAnArgument().(VarAccess).getVariable().getType() = this.getClass()
       )
     )
     or
     // Content providers are considered exposed by default in Android < 4.2
-    this instanceof ContentProvider
+    this instanceof AndroidContentProvider
     or
     // Any component that's the target of an Intent
     exists(ClassInstanceExpr newIntent |
       newIntent.getType() instanceof TypeIntent and
-      newIntent.getAnArgument().getType() = this.getType()
+      newIntent.getAnArgument().getType() = this.getClass()
     )
     or
     // Any component mentioned in a PendingIntent
     exists(MethodAccess ma |
-      ma.getMethod().getDeclaringType().hasQualifiedName("android.app", "PendingIntent") and
-      ma.getAnArgument().getType() = this.getType()
+      ma.getMethod().getDeclaringType() instanceof TypePendingIntent and
+      ma.getAnArgument().getType() = this.getClass()
+    )
+  }
+
+  predicate isExplicitlyUnexported() {
+    exists(AndroidManifestXmlElement elem |
+      elem = this.getAndroidManifestXmlElement() and
+      elem.getAttribute("android:exported") = "false"
     )
   }
 }
@@ -55,14 +57,11 @@ from PotentiallyExposedComponent component
 select component, 
   "This component is potentially exposed to external interactions. " +
   "Reason: " + 
-  (if not exists(AndroidManifest manifest, XMLElement elem |
-      manifest.getApplication().getAChild*() = elem and
-      elem.getName() = component.getKind() and
-      elem.getAttribute("android:exported") = "false"
-    ) then "Not explicitly unexported. "
+  (if component.isExported()
+    then "Explicitly exported in the manifest. "
    else "") +
-  (if exists(IntentFilter filter | filter.getComponent() = component)
-    then "Has an intent filter. "
+  (if component.hasIntentFilter() and not component.isExplicitlyUnexported()
+    then "Has an intent filter and not explicitly unexported. "
    else "") +
   (if exists(MethodAccess ma |
       ma.getMethod().hasName([
@@ -76,23 +75,23 @@ select component,
         "startActivityForResult"
       ]) and
       (
-        ma.getAnArgument().getType() = component.getType()
+        ma.getAnArgument().getType() = component.getClass()
         or
-        ma.getAnArgument().(VarAccess).getVariable().getType() = component.getType()
+        ma.getAnArgument().(VarAccess).getVariable().getType() = component.getClass()
       )
     ) then "Potentially dynamically registered or started. "
    else "") +
-  (if component instanceof ContentProvider
+  (if component instanceof AndroidContentProvider
     then "Is a ContentProvider (potentially exposed by default in Android < 4.2). "
    else "") +
   (if exists(ClassInstanceExpr newIntent |
       newIntent.getType() instanceof TypeIntent and
-      newIntent.getAnArgument().getType() = component.getType()
+      newIntent.getAnArgument().getType() = component.getClass()
     ) then "Used as an Intent target. "
    else "") +
   (if exists(MethodAccess ma |
-      ma.getMethod().getDeclaringType().hasQualifiedName("android.app", "PendingIntent") and
-      ma.getAnArgument().getType() = component.getType()
+      ma.getMethod().getDeclaringType() instanceof TypePendingIntent and
+      ma.getAnArgument().getType() = component.getClass()
     ) then "Used in a PendingIntent. "
    else "") +
   "Verify if this exposure is intentional and properly secured."
