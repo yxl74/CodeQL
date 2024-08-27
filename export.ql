@@ -2,6 +2,13 @@ import java
 import semmle.code.java.dataflow.FlowSources
 import semmle.code.java.frameworks.android.Android
 import semmle.code.xml.AndroidManifest
+import xml.XML
+
+class AndroidManifestFile extends XMLFile {
+  AndroidManifestFile() {
+    this.getBaseName() = "AndroidManifest.xml"
+  }
+}
 
 class AndroidComponent extends Class {
   AndroidComponent() {
@@ -13,15 +20,6 @@ class AndroidComponent extends Class {
     ])
     or
     this.getAnAncestor().hasQualifiedName("android.os", "Binder")
-  }
-
-  AndroidComponentXmlElement getAComponentXmlElement() {
-    result.getName() = this.getComponentType() and
-    (
-      result.getAttributeValue("android:name") = this.getName()
-      or
-      result.getAttributeValue("android:name") = this.getName().suffix(this.getPackage().getName().length() + 1)
-    )
   }
 
   string getComponentType() {
@@ -38,14 +36,20 @@ class AndroidComponent extends Class {
 }
 
 predicate isExportedInAnyManifest(AndroidComponent component) {
-  exists(AndroidComponentXmlElement elem |
-    elem = component.getAComponentXmlElement() and
+  exists(AndroidManifestFile manifest, XMLElement elem |
+    elem.getFile() = manifest and
+    elem.getName() = component.getComponentType() and
+    (
+      elem.getAttributeValue("android:name") = component.getName()
+      or
+      elem.getAttributeValue("android:name") = component.getName().suffix(component.getPackage().getName().length() + 1)
+    ) and
     (
       elem.getAttributeValue("android:exported") = "true"
       or
       (
         not elem.getAttributeValue("android:exported") = "false" and
-        exists(XmlElement intentFilter |
+        exists(XMLElement intentFilter |
           intentFilter.getParent() = elem and
           intentFilter.getName() = "intent-filter"
         )
