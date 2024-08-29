@@ -19,14 +19,19 @@ predicate isExported(XmlElement component) {
   )
 }
 
+predicate isValidComponent(XmlElement component) {
+  component.getName() in ["activity", "service", "receiver", "provider"]
+}
+
 from AndroidManifestFile manifest, XmlElement manifestRoot, XmlElement application, XmlElement component
 where
   manifestRoot.getFile() = manifest and
   manifestRoot.getName() = "manifest" and
   application = manifestRoot.getAChild() and
   application.getName() = "application" and
-  component = application.getAChild() and
-  component.getName() in ["activity", "service", "receiver", "provider"] and
+  component = application.getAChild()+ and
+  component.getParent() = application and
+  isValidComponent(component) and
   isExported(component)
 select
   manifest.getAbsolutePath() as manifestPath,
