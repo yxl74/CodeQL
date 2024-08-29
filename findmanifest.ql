@@ -3,19 +3,33 @@ import codeql.xml.Xml
 
 class AndroidManifestFile extends File {
   AndroidManifestFile() {
-    this.getAbsolutePath().matches("%/AndroidManifest.xml")
+    this.getBaseName() = "AndroidManifest.xml"
   }
 }
 
-from AndroidManifestFile manifest, XmlElement application, XmlElement component, string componentNameAttr
+predicate isExported(XmlElement component) {
+  component.getAttributeValue("android:exported") = "true"
+  or
+  (
+    not exists(component.getAttributeValue("android:exported")) and
+    exists(XmlElement intentFilter |
+      intentFilter = component.getAChild() and
+      intentFilter.getName() = "intent-filter"
+    )
+  )
+}
+
+from AndroidManifestFile manifest, XmlElement manifestRoot, XmlElement application, XmlElement component
 where
-  manifest.getAbsolutePath() = application.getFile().getAbsolutePath() and
+  manifestRoot.getFile() = manifest and
+  manifestRoot.getName() = "manifest" and
+  application = manifestRoot.getAChild() and
   application.getName() = "application" and
   component = application.getAChild() and
   component.getName() in ["activity", "service", "receiver", "provider"] and
-  componentNameAttr = component.getAttributeValue("android:name")
+  isExported(component)
 select
   manifest.getAbsolutePath() as manifestPath,
   component.getName() as componentType,
-  componentNameAttr as componentName,
-  "Component found in AndroidManifest.xml" as description
+  component.getAttributeValue("android:name") as componentName,
+  "Exported component found in AndroidManifest.xml" as description
