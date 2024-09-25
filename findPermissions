@@ -1,0 +1,13 @@
+import android
+import AndroidManifest
+
+from AndroidManifestXmlFile manifest, XmlElement permissionElement, string permissionName, string protectionLevel
+where
+  permissionElement.getFile() = manifest and
+  permissionElement.getName() = "permission" and
+  permissionName = permissionElement.getAttributeValue("android:name") and
+  protectionLevel = permissionElement.getAttributeValue("android:protectionLevel")
+select
+  manifest.getAbsolutePath() as manifestPath,
+  permissionName,
+  protectionLevel
