@@ -1,36 +1,32 @@
-import java
-import codeql.xml.Xml
+import semmle.code.java.frameworks.android.Android
 import semmle.code.xml.AndroidManifest
 
-predicate getPermissionLevel(string permName, string permLevel) {
-  exists(AndroidManifestXmlFile manifest, XmlElement permElement |
-    permElement.getFile() = manifest and
-    permElement.getName() = "permission" and
-    permElement.getAttributeValue("android:name") = permName and
-    permLevel = permElement.getAttributeValue("android:protectionLevel")
+predicate getPermissionLevel(AndroidManifestXmlFile manifest, string permName, string permLevel) {
+  exists(XmlElement permissionElement |
+    permissionElement.getFile() = manifest and
+    permissionElement.getName() = "permission" and
+    permissionElement.getAttributeValue("name") = permName and
+    permLevel = permissionElement.getAttributeValue("protectionLevel")
   )
 }
 
-predicate isAndroidPermission(AndroidPermissionXmlAttribute attr) {
-  attr.getValue().matches("android.permission.%")
-}
-
-from AndroidManifestXmlFile manifest, AndroidComponentXmlElement component, AndroidPermissionXmlAttribute permAttr, string permLevel
+from AndroidManifestXmlFile manifest, AndroidComponentXmlElement component, string permNeeded, string permLevel
 where 
-    component.getFile() = manifest and
-    component.isExported() and
-    permAttr = component.getAnAttribute() and
-    (
-      if exists(string level | getPermissionLevel(permAttr.getValue(), level))
-      then getPermissionLevel(permAttr.getValue(), permLevel)
-      else
-        if isAndroidPermission(permAttr)
-        then permLevel = "system"
-        else permLevel = "undefined"
-    )
+  component.getFile() = manifest and
+  component.isExported() and
+  permNeeded = component.getAttributeValue("permission") and
+  (
+    getPermissionLevel(manifest, permNeeded, permLevel)
+    or
+    (not getPermissionLevel(manifest, permNeeded, _) and
+     permNeeded.matches("android.permission.%") and permLevel = "system")
+    or
+    (not getPermissionLevel(manifest, permNeeded, _) and
+     not permNeeded.matches("android.permission.%") and permLevel = "undefined")
+  )
 select
-    manifest.getAbsolutePath() as filepath,
-    component.getName() as type,
-    component.getResolvedComponentName() as name,
-    permAttr.getValue() as permissionNeeded,
-    permLevel as permissionLevel
+  manifest.getAbsolutePath() as filepath,
+  component.getName() as componentType,
+  component.getAttributeValue("name") as componentName,
+  permNeeded as permissionNeeded,
+  permLevel as permissionLevel
