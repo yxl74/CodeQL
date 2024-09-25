@@ -1,13 +1,12 @@
-import android
-import AndroidManifest
+import semmle.code.java.frameworks.android.Android
+import semmle.code.xml.AndroidManifest
 
-from AndroidManifestXmlFile manifest, XmlElement permissionElement, string permissionName, string protectionLevel
+
+from AndroidManifestXmlFile manifest, XmlElement permissionElement, XmlAttribute attr
 where
   permissionElement.getFile() = manifest and
   permissionElement.getName() = "permission" and
-  permissionName = permissionElement.getAttributeValue("android:name") and
-  protectionLevel = permissionElement.getAttributeValue("android:protectionLevel")
+  attr = permissionElement.getAnAttribute()
 select
-  manifest.getAbsolutePath() as manifestPath,
-  permissionName,
-  protectionLevel
+  permissionElement.getAttributeValue("name") as permissionName,
+  permissionElement.getAttributeValue("protectionLevel") as protectionLevel
