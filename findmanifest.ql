@@ -11,24 +11,20 @@ predicate getPermissionLevel(string permName, string permLevel) {
   )
 }
 
-predicate isAndroidPermission(string permName) {
-  permName.matches("android.permission.%")
+predicate isAndroidPermission(AndroidPermissionXmlAttribute attr) {
+  attr.getValue().matches("android.permission.%")
 }
 
-from AndroidManifestXmlFile manifest, AndroidComponentXmlElement component, string permNeeded, string permLevel
+from AndroidManifestXmlFile manifest, AndroidComponentXmlElement component, AndroidPermissionXmlAttribute permAttr, string permLevel
 where 
     component.getFile() = manifest and
     component.isExported() and
-    exists(XmlAttribute attr |
-      attr = component.getAnAttribute() and
-      attr.getName().matches("%ermission%") and
-      permNeeded = attr.getValue()
-    ) and
+    permAttr = component.getAnAttribute() and
     (
-      if getPermissionLevel(permNeeded, permLevel)
-      then permLevel = permLevel
+      if exists(string level | getPermissionLevel(permAttr.getValue(), level))
+      then getPermissionLevel(permAttr.getValue(), permLevel)
       else
-        if isAndroidPermission(permNeeded)
+        if isAndroidPermission(permAttr)
         then permLevel = "system"
         else permLevel = "undefined"
     )
@@ -36,5 +32,5 @@ select
     manifest.getAbsolutePath() as filepath,
     component.getName() as type,
     component.getResolvedComponentName() as name,
-    permNeeded as permissionNeeded,
+    permAttr.getValue() as permissionNeeded,
     permLevel as permissionLevel
