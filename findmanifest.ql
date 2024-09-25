@@ -25,11 +25,12 @@ where
       permNeeded = attr.getValue()
     ) and
     (
-      getPermissionLevel(permNeeded, permLevel)
-      or
-      (isAndroidPermission(permNeeded) and permLevel = "system")
-      or
-      (not getPermissionLevel(permNeeded, _) and not isAndroidPermission(permNeeded) and permLevel = "undefined")
+      if getPermissionLevel(permNeeded, permLevel)
+      then permLevel = permLevel
+      else
+        if isAndroidPermission(permNeeded)
+        then permLevel = "system"
+        else permLevel = "undefined"
     )
 select
     manifest.getAbsolutePath() as filepath,
