@@ -26,10 +26,11 @@ class StartServiceMethod extends Method {
 
 /** Holds if the service is dynamically started in Code */
 predicate isDynamicallyStartedService(ServiceClass service, MethodAccess ma) {
-    exists(StartServiceMethod m, IntentCreation ic |
+    exists(StartServiceMethod m, ClassInstanceExpr newIntent |
         ma.getMethod() = m and
-        DataFlow::localFlow(DataFlow::exprNode(ic), DataFlow::exprNode(ma.getArgument(0))) and
-        ic.getComponentName() = service.getQualifiedName()
+        newIntent.getConstructedType().hasQualifiedName("android.content", "Intent") and
+        newIntent.getArgument(1).(TypeLiteral).getTypeName() = service.getQualifiedName() and
+        DataFlow::localFlow(DataFlow::exprNode(newIntent), DataFlow::exprNode(ma.getArgument(0)))
     )
 }
 
