@@ -1,12 +1,11 @@
 import java
 import semmle.code.java.dataflow.DataFlow
 import semmle.code.xml.AndroidManifest
-import semmle.code.java.frameworks.android.Android
 
 /** Service Class */
 class ServiceClass extends RefType {
     ServiceClass() {
-        this.getASupertype*().hasQualifiedName("android.app", "Service")
+        this.getASupertype*().hasQualifiedName("android.os", "IInterface")
     }
 }
 
@@ -16,41 +15,47 @@ predicate isStaticallyDeclaredService(ServiceClass service, AndroidComponentXmlE
     svc.getComponentName() = ["." + service.getName(), service.getQualifiedName()]
 }
 
-/** A method that starts a service dynamically */
-class StartServiceMethod extends Method {
-    StartServiceMethod() {
-        this.getDeclaringType().getASupertype*().hasQualifiedName("android.content", "Context") and
-        this.hasName(["startService", "startForegroundService"])
+/** A method that registers a service dynamically */
+class AddServiceMethod extends Method {
+    AddServiceMethod() {
+        this.getDeclaringType().hasQualifiedName("android.os", "ServiceManager") and
+        this.hasName("addService")
     }
 }
 
-/** Holds if the service is dynamically started in Code */
-predicate isDynamicallyStartedService(ServiceClass service, MethodAccess ma) {
-    exists(StartServiceMethod m, ClassInstanceExpr newIntent |
+/** Holds if the service is dynamically registered using ServiceManager.addService */
+predicate isDynamicallyRegisteredService(ServiceClass service, MethodAccess ma) {
+    exists(AddServiceMethod m |
         ma.getMethod() = m and
-        newIntent.getConstructedType().hasQualifiedName("android.content", "Intent") and
-        newIntent.getArgument(1).(TypeLiteral).getTypeName() = service.getQualifiedName() and
-        DataFlow::localFlow(DataFlow::exprNode(newIntent), DataFlow::exprNode(ma.getArgument(0)))
+        (
+            ma.getArgument(1).(ClassInstanceExpr).getConstructedType() = service
+            or
+            exists(Variable v |
+                v.getType() = service and ma.getArgument(1) = v.getAnAccess()
+            )
+        )
     )
 }
 
-from ServiceClass service, string declarationType, string location
+from ServiceClass service, string registrationType, string location, string serviceName
 where 
     (
         exists(AndroidComponentXmlElement svc | 
             isStaticallyDeclaredService(service, svc) and
-            declarationType = "statically" and
-            location = svc.getFile().getAbsolutePath()
+            registrationType = "statically" and
+            location = svc.getFile().getAbsolutePath() and
+            serviceName = svc.getComponentName()
         )
         or
         exists(MethodAccess ma |
-            isDynamicallyStartedService(service, ma) and
-            declarationType = "dynamically" and
-            location = ma.getFile().getAbsolutePath()
+            isDynamicallyRegisteredService(service, ma) and
+            registrationType = "dynamically" and
+            location = ma.getFile().getAbsolutePath() and
+            serviceName = ma.getArgument(0).(StringLiteral).getValue()
         )
     )
 select
     service.getQualifiedName(),
-    declarationType,
-    service.getPackage().getName(),
-    "Declared " + declarationType + " at " + location
+    registrationType,
+    serviceName,
+    "Registered " + registrationType + " at " + location
