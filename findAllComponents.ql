@@ -21,11 +21,9 @@ where
   (
     getPermissionLevel(manifest, permNeeded, permLevel)
     or
-    (not getPermissionLevel(manifest, permNeeded, _) and
-     permNeeded.matches("android.permission.%") and permLevel = "system")
+    (permNeeded.matches("android.permission.%") and permLevel = "System")
     or
-    (not getPermissionLevel(manifest, permNeeded, _) and
-     not permNeeded.matches("android.permission.%") and permLevel = "Outside Current App")
+    (not permNeeded.matches("android.permission.%") and permNeeded != "None" and permLevel = "Custom")
     or
     permNeeded = "None" and permLevel = "N/A"
   ) and
