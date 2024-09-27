@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
+
+const Card = ({ children, title }) => (
+  <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', padding: '20px', marginBottom: '20px' }}>
+    <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '15px' }}>{title}</h2>
+    {children}
+  </div>
+);
 
 const AndroidSecurityDashboard = () => {
   const [data, setData] = useState(null);
@@ -50,16 +56,13 @@ const AndroidSecurityDashboard = () => {
   });
 
   return (
-    <div className="p-6 bg-gray-100">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Android Security Dashboard</h1>
+    <div style={{ padding: '24px', backgroundColor: '#f3f4f6', fontFamily: 'Arial, sans-serif' }}>
+      <h1 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '24px', color: '#1f2937' }}>Android Security Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold">Component Types</h2>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+        <Card title="Component Types">
+          <div style={{ height: '300px' }}>
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={componentTypeData}
@@ -78,15 +81,12 @@ const AndroidSecurityDashboard = () => {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-          </CardContent>
+          </div>
         </Card>
         
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold">Permission Levels</h2>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+        <Card title="Permission Levels">
+          <div style={{ height: '300px' }}>
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={permissionLevelData}>
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -95,15 +95,12 @@ const AndroidSecurityDashboard = () => {
                 <Bar dataKey="value" fill="#8884d8" />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
+          </div>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold">Component Protection Status</h2>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+        <Card title="Component Protection Status">
+          <div style={{ height: '300px' }}>
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={componentProtectionStatus}>
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -113,35 +110,30 @@ const AndroidSecurityDashboard = () => {
                 <Bar dataKey="unprotected" stackId="a" fill="#ff8042" name="Unprotected" />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
+          </div>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <h2 className="text-xl font-semibold">Key Metrics</h2>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-4">
-              <li className="flex justify-between items-center">
-                <span className="font-medium">Total Components:</span>
-                <span className="text-2xl font-bold text-blue-600">
-                  {summary.totalComponents}
-                </span>
-              </li>
-              <li className="flex justify-between items-center">
-                <span className="font-medium">Exported Components:</span>
-                <span className="text-2xl font-bold text-red-600">
-                  {summary.exportedComponents}
-                </span>
-              </li>
-              <li className="flex justify-between items-center">
-                <span className="font-medium">Export Percentage:</span>
-                <span className="text-2xl font-bold text-yellow-600">
-                  {((summary.exportedComponents / summary.totalComponents) * 100).toFixed(2)}%
-                </span>
-              </li>
-            </ul>
-          </CardContent>
+        <Card title="Key Metrics">
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontWeight: '500' }}>Total Components:</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#3b82f6' }}>
+                {summary.totalComponents}
+              </span>
+            </li>
+            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontWeight: '500' }}>Exported Components:</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>
+                {summary.exportedComponents}
+              </span>
+            </li>
+            <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: '500' }}>Export Percentage:</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#f59e0b' }}>
+                {((summary.exportedComponents / summary.totalComponents) * 100).toFixed(2)}%
+              </span>
+            </li>
+          </ul>
         </Card>
       </div>
     </div>
