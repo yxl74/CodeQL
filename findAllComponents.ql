@@ -19,20 +19,21 @@ where
     not exists(component.getAttributeValue("permission")) and permNeeded = "None"
   ) and
   (
-    // Case 1: System permission
+    // Case 1: No permission
+    (permNeeded = "None" and permLevel = "N/A")
+    or
+    // Case 2: System permission
     (permNeeded.matches("android.permission.%") and permLevel = "System")
     or
-    // Case 2: Permission defined in the app
-    (getPermissionLevel(manifest, permNeeded, permLevel) and permNeeded != "None")
+    // Case 3: Permission defined in the app
+    (getPermissionLevel(manifest, permNeeded, permLevel) and
+     not permNeeded.matches("android.permission.%"))
     or
-    // Case 3: Custom permission defined outside of the app
+    // Case 4: Custom permission defined outside of the app
     (not permNeeded.matches("android.permission.%") and
      not getPermissionLevel(manifest, permNeeded, _) and
      permNeeded != "None" and
      permLevel = "Outside of app")
-    or
-    // Case 4: No permission
-    (permNeeded = "None" and permLevel = "N/A")
   ) and
   (
     exported = component.getAttributeValue("exported")
