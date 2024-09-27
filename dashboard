@@ -167,9 +167,19 @@ const AndroidSecurityDashboard = () => {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <p style={{ textAlign: 'center', marginTop: '10px' }}>
+          <p style={{ textAlign: 'center', marginTop: '10px', marginBottom: '20px' }}>
             Total Dangerous Components: {dangerousComponents.length}
           </p>
+          <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '10px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '10px' }}>List of Dangerous Components:</h3>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {dangerousComponents.map((component, index) => (
+                <li key={index} style={{ marginBottom: '5px', fontSize: '0.9rem' }}>
+                  {component.componentName} ({component.componentType})
+                </li>
+              ))}
+            </ul>
+          </div>
         </Card>
 
         <Card title="Key Metrics">
