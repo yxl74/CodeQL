@@ -10,7 +10,7 @@ predicate getPermissionLevel(AndroidManifestXmlFile manifest, string permName, s
   )
 }
 
-from AndroidManifestXmlFile manifest, AndroidComponentXmlElement component, string permNeeded, string permLevel, string exported
+from AndroidManifestXmlFile manifest, AndroidComponentXmlElement component, string permNeeded, string permLevel, string exported, string noteWorthy
 where 
   component.getFile() = manifest and
   (
@@ -39,10 +39,16 @@ where
     exported = component.getAttributeValue("exported")
     or
     not exists(component.getAttributeValue("exported")) and exported = "Not specified"
+  ) and
+  (
+    (exported = "false" and permNeeded != "None" and noteWorthy = "Non-exported with permission")
+    or
+    noteWorthy = "Normal"
   )
 select
   component.getName() as componentType,
   component.getAttributeValue("name") as componentName,
   exported as isExported,
   permNeeded as permissionNeeded,
-  permLevel as permissionLevel
+  permLevel as permissionLevel,
+  noteWorthy as note
