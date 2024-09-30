@@ -63,19 +63,11 @@ const AndroidSecurityDashboard = () => {
 
   const componentTypeData = Object.entries(summary.componentTypes).map(([name, value]) => ({ name, value }));
   
-  // Merge signature and signatureOrSystem permission levels
+  // Correctly merge signature and signatureOrSystem permission levels
   const mergedPermissionLevels = {...summary.permissionLevels};
-  if (mergedPermissionLevels.signature && mergedPermissionLevels.signatureOrSystem) {
-    mergedPermissionLevels.system = mergedPermissionLevels.signature + mergedPermissionLevels.signatureOrSystem;
-    delete mergedPermissionLevels.signature;
-    delete mergedPermissionLevels.signatureOrSystem;
-  } else if (mergedPermissionLevels.signature) {
-    mergedPermissionLevels.system = mergedPermissionLevels.signature;
-    delete mergedPermissionLevels.signature;
-  } else if (mergedPermissionLevels.signatureOrSystem) {
-    mergedPermissionLevels.system = mergedPermissionLevels.signatureOrSystem;
-    delete mergedPermissionLevels.signatureOrSystem;
-  }
+  mergedPermissionLevels.signatureOrSystem = (mergedPermissionLevels.signature || 0) + (mergedPermissionLevels.signatureOrSystem || 0);
+  delete mergedPermissionLevels.signature;
+  
   const permissionLevelData = Object.entries(mergedPermissionLevels).map(([name, value]) => ({ name, value }));
 
   const componentProtectionStatus = ['activity', 'service', 'provider', 'receiver'].map(type => {
