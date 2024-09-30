@@ -62,7 +62,21 @@ const AndroidSecurityDashboard = () => {
   const { summary, components } = data;
 
   const componentTypeData = Object.entries(summary.componentTypes).map(([name, value]) => ({ name, value }));
-  const permissionLevelData = Object.entries(summary.permissionLevels).map(([name, value]) => ({ name, value }));
+  
+  // Merge signature and signatureOrSystem permission levels
+  const mergedPermissionLevels = {...summary.permissionLevels};
+  if (mergedPermissionLevels.signature && mergedPermissionLevels.signatureOrSystem) {
+    mergedPermissionLevels.system = mergedPermissionLevels.signature + mergedPermissionLevels.signatureOrSystem;
+    delete mergedPermissionLevels.signature;
+    delete mergedPermissionLevels.signatureOrSystem;
+  } else if (mergedPermissionLevels.signature) {
+    mergedPermissionLevels.system = mergedPermissionLevels.signature;
+    delete mergedPermissionLevels.signature;
+  } else if (mergedPermissionLevels.signatureOrSystem) {
+    mergedPermissionLevels.system = mergedPermissionLevels.signatureOrSystem;
+    delete mergedPermissionLevels.signatureOrSystem;
+  }
+  const permissionLevelData = Object.entries(mergedPermissionLevels).map(([name, value]) => ({ name, value }));
 
   const componentProtectionStatus = ['activity', 'service', 'provider', 'receiver'].map(type => {
     const typeComponents = components.filter(c => c.componentType === type);
@@ -75,17 +89,16 @@ const AndroidSecurityDashboard = () => {
     };
   });
 
-  // Process data for dangerous components
-  const dangerousComponents = components.filter(c => 
-    c.isExported === 'true' && (c.permissionNeeded === 'None' || c.permissionLevel === 'normal')
-  );
+  // Process data for potentially-vulnerable components
+  const vulnerableComponents = {
+    noPermission: components.filter(c => c.isExported === 'true' && c.permissionNeeded === 'None'),
+    normalPermission: components.filter(c => c.isExported === 'true' && c.permissionNeeded !== 'None' && c.permissionLevel === 'normal')
+  };
 
-  const dangerousComponentTypes = dangerousComponents.reduce((acc, c) => {
-    acc[c.componentType] = (acc[c.componentType] || 0) + 1;
-    return acc;
-  }, {});
-
-  const dangerousComponentsData = Object.entries(dangerousComponentTypes).map(([name, value]) => ({ name, value }));
+  const vulnerableComponentsData = [
+    { name: 'Exported without permission', value: vulnerableComponents.noPermission.length },
+    { name: 'Exported with normal permission', value: vulnerableComponents.normalPermission.length }
+  ];
 
   return (
     <div style={{ padding: '24px', backgroundColor: '#f3f4f6', fontFamily: 'Arial, sans-serif' }}>
@@ -145,12 +158,12 @@ const AndroidSecurityDashboard = () => {
           </div>
         </Card>
 
-        <Card title="Dangerous Components">
+        <Card title="Potentially-Vulnerable Components">
           <div style={{ height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={dangerousComponentsData}
+                  data={vulnerableComponentsData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -159,7 +172,7 @@ const AndroidSecurityDashboard = () => {
                   dataKey="value"
                   label={({ name, value }) => `${name}: ${value}`}
                 >
-                  {dangerousComponentsData.map((entry, index) => (
+                  {vulnerableComponentsData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -168,12 +181,20 @@ const AndroidSecurityDashboard = () => {
             </ResponsiveContainer>
           </div>
           <p style={{ textAlign: 'center', marginTop: '10px', marginBottom: '20px' }}>
-            Total Dangerous Components: {dangerousComponents.length}
+            Total Potentially-Vulnerable Components: {vulnerableComponents.noPermission.length + vulnerableComponents.normalPermission.length}
           </p>
           <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '10px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '10px' }}>List of Dangerous Components:</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '10px' }}>Exported without permission:</h3>
+            <ul style={{ listStyle: 'none', padding: 0, marginBottom: '15px' }}>
+              {vulnerableComponents.noPermission.map((component, index) => (
+                <li key={index} style={{ marginBottom: '5px', fontSize: '0.9rem' }}>
+                  {component.componentName} ({component.componentType})
+                </li>
+              ))}
+            </ul>
+            <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '10px' }}>Exported with normal permission:</h3>
             <ul style={{ listStyle: 'none', padding: 0 }}>
-              {dangerousComponents.map((component, index) => (
+              {vulnerableComponents.normalPermission.map((component, index) => (
                 <li key={index} style={{ marginBottom: '5px', fontSize: '0.9rem' }}>
                   {component.componentName} ({component.componentType})
                 </li>
