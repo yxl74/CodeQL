@@ -61,17 +61,35 @@ const AndroidSecurityDashboard = () => {
 
   const { summary, components } = data;
 
-  const componentTypeData = Object.entries(summary.componentTypes).map(([name, value]) => ({ name, value }));
+  // Filter out test components
+  const filteredComponents = components.filter(c => !c.componentName.includes('test.core.app'));
+
+  // Recalculate summary based on filtered components
+  const recalculatedSummary = {
+    ...summary,
+    totalComponents: filteredComponents.length,
+    exportedComponents: filteredComponents.filter(c => c.isExported === 'true').length,
+    componentTypes: filteredComponents.reduce((acc, c) => {
+      acc[c.componentType] = (acc[c.componentType] || 0) + 1;
+      return acc;
+    }, {}),
+    permissionLevels: filteredComponents.reduce((acc, c) => {
+      acc[c.permissionLevel] = (acc[c.permissionLevel] || 0) + 1;
+      return acc;
+    }, {})
+  };
+
+  const componentTypeData = Object.entries(recalculatedSummary.componentTypes).map(([name, value]) => ({ name, value }));
   
-  // Correctly merge signature and signatureOrSystem permission levels
-  const mergedPermissionLevels = {...summary.permissionLevels};
+  // Merge signature and signatureOrSystem permission levels
+  const mergedPermissionLevels = {...recalculatedSummary.permissionLevels};
   mergedPermissionLevels.signatureOrSystem = (mergedPermissionLevels.signature || 0) + (mergedPermissionLevels.signatureOrSystem || 0);
   delete mergedPermissionLevels.signature;
   
   const permissionLevelData = Object.entries(mergedPermissionLevels).map(([name, value]) => ({ name, value }));
 
   const componentProtectionStatus = ['activity', 'service', 'provider', 'receiver'].map(type => {
-    const typeComponents = components.filter(c => c.componentType === type);
+    const typeComponents = filteredComponents.filter(c => c.componentType === type);
     const protectedCount = typeComponents.filter(c => c.isExported === 'false' || (c.permissionNeeded !== 'None' && c.permissionLevel !== 'normal')).length;
     const unprotectedCount = typeComponents.length - protectedCount;
     return {
@@ -83,8 +101,8 @@ const AndroidSecurityDashboard = () => {
 
   // Process data for potentially-vulnerable components
   const vulnerableComponents = {
-    noPermission: components.filter(c => c.isExported === 'true' && c.permissionNeeded === 'None'),
-    normalPermission: components.filter(c => c.isExported === 'true' && c.permissionNeeded !== 'None' && c.permissionLevel === 'normal')
+    noPermission: filteredComponents.filter(c => c.isExported === 'true' && c.permissionNeeded === 'None'),
+    normalPermission: filteredComponents.filter(c => c.isExported === 'true' && c.permissionNeeded !== 'None' && c.permissionLevel === 'normal')
   };
 
   const vulnerableComponentsData = [
@@ -203,7 +221,7 @@ const AndroidSecurityDashboard = () => {
                 <span style={{ marginLeft: '10px' }}>Total Components:</span>
               </span>
               <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#3b82f6' }}>
-                {summary.totalComponents}
+                {recalculatedSummary.totalComponents}
               </span>
             </li>
             <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -212,7 +230,7 @@ const AndroidSecurityDashboard = () => {
                 <span style={{ marginLeft: '10px' }}>Exported Components:</span>
               </span>
               <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>
-                {summary.exportedComponents}
+                {recalculatedSummary.exportedComponents}
               </span>
             </li>
             <li style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -221,7 +239,7 @@ const AndroidSecurityDashboard = () => {
                 <span style={{ marginLeft: '10px' }}>Export Percentage:</span>
               </span>
               <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#f59e0b' }}>
-                {((summary.exportedComponents / summary.totalComponents) * 100).toFixed(2)}%
+                {((recalculatedSummary.exportedComponents / recalculatedSummary.totalComponents) * 100).toFixed(2)}%
               </span>
             </li>
           </ul>
